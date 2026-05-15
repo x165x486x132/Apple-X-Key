@@ -118,11 +118,6 @@ jobs:
                   "color": 0x57F287,
                   "fields": [
                       {
-                          "name": "🕛  Resets at",
-                          "value": "**00:00 UTC** daily",
-                          "inline": True
-                      },
-                      {
                           "name": "📅  Expires on",
                           "value": f"**{expire_str}**",
                           "inline": True
