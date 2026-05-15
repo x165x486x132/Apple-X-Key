@@ -12,8 +12,9 @@ on:
         default: 'generate'
         type: choice
         options:
-          - generate
-          - refresh
+          - generate    # New key + update embed
+          - refresh     # Refresh embed only (keep current key)
+          - new-embed   # Send a new message, delete the old one, save new ID
 
 permissions:
   contents: write
@@ -32,8 +33,8 @@ jobs:
         id: detect-mode
         run: |
           if [ "${{ github.event_name }}" = "schedule" ]; then
-            MINUTE=$(date -u +"%M")
             HOUR=$(date -u +"%H")
+            MINUTE=$(date -u +"%M")
             if [ "$HOUR" = "00" ] && [ "$MINUTE" = "00" ]; then
               echo "mode=generate" >> $GITHUB_OUTPUT
             else
@@ -62,13 +63,13 @@ jobs:
           # ── Key: generate new or reuse existing ───────────────────────
           CHARSET = string.ascii_uppercase + string.digits
 
-          if mode == "refresh":
+          if mode == "refresh" or mode == "new-embed":
               try:
                   with open("key.txt", "r") as f:
                       daily_key = f.read().strip()
                   print(f"🔁 Reusing existing key: {daily_key}")
               except FileNotFoundError:
-                  print("❌ key.txt not found — cannot refresh, run 'generate' first.", file=sys.stderr)
+                  print("❌ key.txt not found — run 'generate' first.", file=sys.stderr)
                   sys.exit(1)
           else:
               random_part = ''.join(random.SystemRandom().choices(CHARSET, k=13))
@@ -84,10 +85,10 @@ jobs:
           next_midnight = (now_utc + timedelta(days=1)).replace(
               hour=0, minute=0, second=0, microsecond=0
           )
-          expire_str  = next_midnight.strftime("%B %d, %Y at 00:00 UTC")
-          hours_left  = int((next_midnight - now_utc).total_seconds() // 3600)
-          mins_left   = int(((next_midnight - now_utc).total_seconds() % 3600) // 60)
-          time_left   = f"{hours_left}h {mins_left:02d}m remaining"
+          expire_str = next_midnight.strftime("%B %d, %Y at 00:00 UTC")
+          hours_left = int((next_midnight - now_utc).total_seconds() // 3600)
+          mins_left  = int(((next_midnight - now_utc).total_seconds() % 3600) // 60)
+          time_left  = f"{hours_left}h {mins_left:02d}m remaining"
 
           # ── Parse webhook URL ─────────────────────────────────────────
           webhook_url = os.environ.get("WEBHOOK_URL")
@@ -99,11 +100,19 @@ jobs:
           webhook_token = parts[-1]
           webhook_id    = parts[-2]
 
-          MESSAGE_ID = "1504920316219097160"
-          edit_url   = f"https://discord.com/api/webhooks/{webhook_id}/{webhook_token}/messages/{MESSAGE_ID}"
+          base_url = f"https://discord.com/api/webhooks/{webhook_id}/{webhook_token}"
 
-          # ── Build embed ───────────────────────────────────────────────
-          payload = {
+          # ── Read current message ID from file ─────────────────────────
+          try:
+              with open("message_id.txt", "r") as f:
+                  message_id = f.read().strip()
+              print(f"📌 Current message ID: {message_id}")
+          except FileNotFoundError:
+              message_id = None
+              print("⚠️  message_id.txt not found — will create a new message.")
+
+          # ── Build embed payload ───────────────────────────────────────
+          embed_payload = {
               "username": "Apple X | KEY",
               "embeds": [{
                   "author": {
@@ -134,18 +143,51 @@ jobs:
               }]
           }
 
-          # ── PATCH the existing message ────────────────────────────────
-          response = requests.patch(edit_url, json=payload, timeout=10)
-          response.raise_for_status()
-          print(f"✅ Discord embed updated (status {response.status_code})")
+          # ── new-embed: POST new message, DELETE old one ───────────────
+          if mode == "new-embed" or message_id is None:
+              # 1. Send new message (wait=true returns the message object with its ID)
+              response = requests.post(
+                  f"{base_url}?wait=true",
+                  json=embed_payload,
+                  timeout=10
+              )
+              response.raise_for_status()
+              new_message_id = str(response.json()["id"])
+              print(f"✅ New message sent — ID: {new_message_id}")
+
+              # 2. Delete old message if we had one
+              if message_id:
+                  del_response = requests.delete(
+                      f"{base_url}/messages/{message_id}",
+                      timeout=10
+                  )
+                  if del_response.status_code == 204:
+                      print(f"🗑️  Old message {message_id} deleted")
+                  else:
+                      print(f"⚠️  Could not delete old message: {del_response.status_code}")
+
+              # 3. Save new message ID to file
+              with open("message_id.txt", "w") as f:
+                  f.write(new_message_id)
+              print(f"💾 Saved new message ID: {new_message_id}")
+
+          # ── generate / refresh: PATCH existing message ────────────────
+          else:
+              response = requests.patch(
+                  f"{base_url}/messages/{message_id}",
+                  json=embed_payload,
+                  timeout=10
+              )
+              response.raise_for_status()
+              print(f"✅ Discord embed updated (status {response.status_code})")
           EOF
 
-      - name: Commit & Push key.txt
+      - name: Commit & Push changes
         if: ${{ steps.detect-mode.outputs.mode != 'refresh' }}
         run: |
           git config --global user.name  "Apple X Bot"
           git config --global user.email "bot@applex.com"
-          git add key.txt
+          git add key.txt message_id.txt
           git diff --cached --quiet && echo "⚠️ No changes to commit" && exit 0
           git commit -m "chore: update daily key [$(date -u +'%Y-%m-%d %H:%M UTC')]"
           git push
