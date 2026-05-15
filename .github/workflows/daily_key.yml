@@ -1,0 +1,51 @@
+name: Apple X Daily Key Generator
+
+on:
+  schedule:
+    - cron: '0 0 * * *' # Executes every day at Midnight UTC
+  workflow_dispatch: 
+
+jobs:
+  update-key:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v3
+
+      - name: Generate Key & Send to Discord
+        env:
+          WEBHOOK_URL: ${{ secrets.WEBHOOK_URL }}
+        run: |
+          python -c "
+          import random, string, requests, os
+
+          # 1. Generate an Apple X key (Ex: APPLEX-A7B9Z2)
+          random_chars = ''.join(random.choices(string.ascii_uppercase + string.digits, k=6))
+          daily_key = f'APPLEX-{random_chars}'
+
+          # 2. Write key to key.txt
+          with open('key.txt', 'w') as f:
+              f.write(daily_key)
+
+          # 3. Send Discord Embed (English)
+          webhook_url = os.environ.get('WEBHOOK_URL')
+          data = {
+              'username': 'Apple X Security',
+              'avatar_url': 'https://i.imgur.com/k2A78hM.png',
+              'embeds': [{
+                  'title': '🍏 Apple X | Daily Access Key',
+                  'description': f'Here is your access key for today:\n\n**`{daily_key}`**\n\n*⚠️ This key will expire in 24 hours. Make sure to check this channel daily to get the new key and maintain your access.*',
+                  'color': 0,
+                  'footer': {'text': 'Apple X Premium - Automated 24H Security System'}
+              }]
+          }
+          requests.post(webhook_url, json=data)
+          "
+          
+      - name: Save key.txt to GitHub
+        run: |
+          git config --global user.name "Apple X Bot"
+          git config --global user.email "bot@applex.com"
+          git add key.txt
+          git commit -m "Auto-update daily key" || echo "No changes"
+          git push
