@@ -2,7 +2,8 @@ name: 🍏 Apple X — Daily Key Generator
 
 on:
   schedule:
-    - cron: '0 0 * * *'  # Midnight UTC (1AM Paris winter / 2AM Paris summer)
+    - cron: '0 0 * * *'      # Midnight UTC — generates a new key
+    - cron: '15,45 * * * *'  # Every 30 min (:15 and :45) — refreshes the embed
   workflow_dispatch:
     inputs:
       mode:
@@ -27,10 +28,25 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
+      - name: Detect mode from schedule
+        id: detect-mode
+        run: |
+          if [ "${{ github.event_name }}" = "schedule" ]; then
+            MINUTE=$(date -u +"%M")
+            HOUR=$(date -u +"%H")
+            if [ "$HOUR" = "00" ] && [ "$MINUTE" = "00" ]; then
+              echo "mode=generate" >> $GITHUB_OUTPUT
+            else
+              echo "mode=refresh" >> $GITHUB_OUTPUT
+            fi
+          else
+            echo "mode=${{ github.event.inputs.mode || 'generate' }}" >> $GITHUB_OUTPUT
+          fi
+
       - name: Generate Key & Edit Discord Embed
         env:
           WEBHOOK_URL: ${{ secrets.WEBHOOK_URL }}
-          MODE: ${{ github.event.inputs.mode || 'generate' }}
+          MODE: ${{ steps.detect-mode.outputs.mode }}
         run: |
           python3 << 'EOF'
           import random
@@ -38,7 +54,7 @@ jobs:
           import requests
           import os
           import sys
-          from datetime import datetime, timezone
+          from datetime import datetime, timezone, timedelta
 
           mode = os.environ.get("MODE", "generate")
           print(f"▶️  Mode: {mode}")
@@ -61,11 +77,16 @@ jobs:
                   f.write(daily_key)
               print(f"✅ New key generated: {daily_key}")
 
-          # ── UTC timestamp ─────────────────────────────────────────────
+          # ── UTC timestamps ────────────────────────────────────────────
           now_utc = datetime.now(timezone.utc)
-          date_str    = now_utc.strftime("%A, %B %d %Y")
-          expire_str  = now_utc.strftime("%m/%d/%Y at 00:00 UTC")
-          time_str    = now_utc.strftime("%H:%M UTC")
+          date_str = now_utc.strftime("%A, %B %d %Y")
+          time_str = now_utc.strftime("%H:%M UTC")
+
+          # Next midnight UTC as Unix timestamp (for Discord dynamic timestamp)
+          next_midnight = (now_utc + timedelta(days=1)).replace(
+              hour=0, minute=0, second=0, microsecond=0
+          )
+          expire_unix = int(next_midnight.timestamp())
 
           # ── Parse webhook URL ─────────────────────────────────────────
           webhook_url = os.environ.get("WEBHOOK_URL")
@@ -85,7 +106,7 @@ jobs:
               "username": "Apple X | KEY",
               "embeds": [{
                   "author": {
-                      "name": "Apple X Premium — Security System"
+                      "name": "Apple X — Security System"
                   },
                   "title": "🔑  Daily Access Key",
                   "description": (
@@ -101,7 +122,9 @@ jobs:
                       },
                       {
                           "name": "📅  Valid until",
-                          "value": expire_str,
+                          # <t:UNIX:R> = live relative countdown ("in 14 hours")
+                          # <t:UNIX:F> = full date display
+                          "value": f"<t:{expire_unix}:F>\n<t:{expire_unix}:R>",
                           "inline": True
                       },
                       {
@@ -114,7 +137,7 @@ jobs:
                       }
                   ],
                   "footer": {
-                      "text": f"{'Refreshed' if mode == 'refresh' else 'Generated'} at {time_str}  ·  Apple X Premium"
+                      "text": f"{'Refreshed' if mode == 'refresh' else 'Generated'} at {time_str}  ·  Apple X"
                   },
                   "timestamp": now_utc.isoformat()
               }]
@@ -127,7 +150,7 @@ jobs:
           EOF
 
       - name: Commit & Push key.txt
-        if: ${{ github.event.inputs.mode != 'refresh' }}
+        if: ${{ steps.detect-mode.outputs.mode != 'refresh' }}
         run: |
           git config --global user.name  "Apple X Bot"
           git config --global user.email "bot@applex.com"
