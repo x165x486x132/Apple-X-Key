@@ -5,10 +5,14 @@ on:
     - cron: '0 0 * * *'  # Midnight UTC (1AM Paris winter / 2AM Paris summer)
   workflow_dispatch:
     inputs:
-      reason:
-        description: 'Reason for manual trigger'
-        required: false
-        default: 'Manual test'
+      mode:
+        description: 'Action to perform'
+        required: true
+        default: 'generate'
+        type: choice
+        options:
+          - generate   # Generate a new key + update embed
+          - refresh    # Only refresh the embed (keep current key)
 
 permissions:
   contents: write
@@ -26,6 +30,7 @@ jobs:
       - name: Generate Key & Edit Discord Embed
         env:
           WEBHOOK_URL: ${{ secrets.WEBHOOK_URL }}
+          MODE: ${{ github.event.inputs.mode || 'generate' }}
         run: |
           python3 << 'EOF'
           import random
@@ -35,23 +40,35 @@ jobs:
           import sys
           from datetime import datetime, timezone
 
-          # ── Key generation ────────────────────────────────────────────
+          mode = os.environ.get("MODE", "generate")
+          print(f"▶️  Mode: {mode}")
+
+          # ── Key: generate new or reuse existing ───────────────────────
           CHARSET = string.ascii_uppercase + string.digits
-          random_part = ''.join(random.SystemRandom().choices(CHARSET, k=13))
-          daily_key = f"APPLEX{random_part}"
+
+          if mode == "refresh":
+              # Read current key from key.txt
+              try:
+                  with open("key.txt", "r") as f:
+                      daily_key = f.read().strip()
+                  print(f"🔁 Reusing existing key: {daily_key}")
+              except FileNotFoundError:
+                  print("❌ key.txt not found — cannot refresh, run 'generate' first.", file=sys.stderr)
+                  sys.exit(1)
+          else:
+              # Generate a brand new key
+              random_part = ''.join(random.SystemRandom().choices(CHARSET, k=13))
+              daily_key = f"APPLEX{random_part}"
+              with open("key.txt", "w") as f:
+                  f.write(daily_key)
+              print(f"✅ New key generated: {daily_key}")
 
           # ── UTC timestamp ─────────────────────────────────────────────
           now_utc = datetime.now(timezone.utc)
           date_str = now_utc.strftime("%A, %B %d %Y")
           expire_str = now_utc.strftime("%m/%d/%Y at 00:00 UTC")
 
-          # ── Save key locally ──────────────────────────────────────────
-          with open("key.txt", "w") as f:
-              f.write(daily_key)
-          print(f"✅ Key generated: {daily_key}")
-
-          # ── Parse webhook URL to extract ID & token ───────────────────
-          # Format: https://discord.com/api/webhooks/{id}/{token}
+          # ── Parse webhook URL ─────────────────────────────────────────
           webhook_url = os.environ.get("WEBHOOK_URL")
           if not webhook_url:
               print("❌ WEBHOOK_URL is missing", file=sys.stderr)
@@ -61,11 +78,10 @@ jobs:
           webhook_token = parts[-1]
           webhook_id    = parts[-2]
 
-          # ── Message to edit ───────────────────────────────────────────
           MESSAGE_ID = "1504920316219097160"
           edit_url = f"https://discord.com/api/webhooks/{webhook_id}/{webhook_token}/messages/{MESSAGE_ID}"
 
-          # ── Build embed payload ───────────────────────────────────────
+          # ── Build embed ───────────────────────────────────────────────
           description = (
               f"Here is your access key for today:\n\n"
               f"# {daily_key}\n\n"
@@ -96,19 +112,19 @@ jobs:
                       }
                   ],
                   "footer": {
-                      "text": "Apple X Premium · Automated 24H Security System · UTC"
+                      "text": f"Apple X Premium · {'Embed refreshed' if mode == 'refresh' else 'Automated 24H Security System'} · UTC"
                   },
                   "timestamp": now_utc.isoformat()
               }]
           }
 
-          # ── PATCH the existing message ────────────────────────────────
           response = requests.patch(edit_url, json=payload, timeout=10)
           response.raise_for_status()
           print(f"✅ Discord embed updated (status {response.status_code})")
           EOF
 
       - name: Commit & Push key.txt
+        if: ${{ github.event.inputs.mode != 'refresh' }}
         run: |
           git config --global user.name  "Apple X Bot"
           git config --global user.email "bot@applex.com"
