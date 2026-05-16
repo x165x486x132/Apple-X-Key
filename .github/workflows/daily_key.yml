@@ -62,7 +62,7 @@ jobs:
           mode = os.environ.get("MODE", "generate")
           print(f"▶️  Mode: {mode}")
 
-          # ── MOT DE PASSE SECRET
+          # ── SECRET PASSWORD
           SECRET_PASSWORD = "FDGJ084MKLJGDL146515KGREFEZE654HRJ"
           CHARSET = string.ascii_uppercase + string.digits
 
@@ -72,7 +72,7 @@ jobs:
           def decrypt_xor(data_bytes, key):
               return "".join([chr(b ^ ord(key[i % len(key)])) for i, b in enumerate(data_bytes)])
 
-          # ── MODE : ENCRYPT CURRENT (Crypte la clé en clair actuelle)
+          # ── MODE : ENCRYPT CURRENT
           if mode == "encrypt-current":
               try:
                   with open("key.txt", "r") as f:
@@ -89,7 +89,7 @@ jobs:
               except FileNotFoundError:
                   print("❌ key.txt introuvable.")
               
-              sys.exit(0) # On arrête le script ici, on ne touche pas à Discord
+              sys.exit(0)
 
           # ── AUTRES MODES : REFRESH OU GENERATE
           if mode == "refresh" or mode == "new-embed":
