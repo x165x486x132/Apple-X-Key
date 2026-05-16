@@ -2,8 +2,8 @@ name: 📊 Update Discord Member Stats
 
 on:
   schedule:
-    # Met à jour toutes les heures à la minute 0 (00:00, 01:00, 02:00...)
-    - cron: '0 * * * *'
+    # Met à jour toutes les 6 minutes
+    - cron: '*/6 * * * *'
   workflow_dispatch: # Permet de le lancer manuellement avec le bouton
 
 jobs:
