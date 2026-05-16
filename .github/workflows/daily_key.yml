@@ -61,19 +61,37 @@ jobs:
           mode = os.environ.get("MODE", "generate")
           print(f"▶️  Mode: {mode}")
 
-          # ── Key: generate new or reuse existing ───────────────────────
+          # ── MOT DE PASSE SECRET POUR LE CHIFFREMENT (Doit être le même sur Lua)
+          SECRET_PASSWORD = "FDGJ084MKLJGDL146515KGREFEZE654HRJ"
           CHARSET = string.ascii_uppercase + string.digits
+
+          def encrypt_xor(text, key):
+              encrypted = bytearray()
+              for i in range(len(text)):
+                  char_code = ord(text[i])
+                  key_code = ord(key[i % len(key)])
+                  encrypted.append(char_code ^ key_code)
+              return encrypted # Retourne des bytes
+
+          def decrypt_xor(data_bytes, key):
+              decrypted = []
+              for i in range(len(data_bytes)):
+                  byte_val = data_bytes[i]
+                  key_code = ord(key[i % len(key)])
+                  decrypted.append(chr(byte_val ^ key_code))
+              return "".join(decrypted)
 
           if mode == "refresh" or mode == "new-embed":
               try:
                   with open("key.txt", "r") as f:
                       obfuscated_key = f.read().strip()
                   
-                  # Tentative de décodage (au cas où l'ancienne clé était en clair, on met un fallback)
+                  # Décodage pour Discord
                   try:
-                      daily_key = base64.b64decode(obfuscated_key).decode('utf-8')
+                      xor_bytes = base64.b64decode(obfuscated_key)
+                      daily_key = decrypt_xor(xor_bytes, SECRET_PASSWORD)
                   except Exception:
-                      daily_key = obfuscated_key
+                      daily_key = obfuscated_key # Fallback si ancienne clé en clair
                       
                   print(f"🔁 Reusing existing key (decoded for Discord)")
               except FileNotFoundError:
@@ -83,12 +101,14 @@ jobs:
               random_part = ''.join(random.SystemRandom().choices(CHARSET, k=13))
               daily_key = f"APPLEX{random_part}"
               
-              # Obfuscation de la clé en Base64 avant de la sauvegarder dans le repo
-              obfuscated_key = base64.b64encode(daily_key.encode('utf-8')).decode('utf-8')
+              # 1. Chiffrement XOR
+              xor_encrypted = encrypt_xor(daily_key, SECRET_PASSWORD)
+              # 2. Encodage Base64 pour l'écrire dans le fichier proprement
+              obfuscated_key = base64.b64encode(xor_encrypted).decode('utf-8')
               
               with open("key.txt", "w") as f:
                   f.write(obfuscated_key)
-              print(f"✅ New key generated & obfuscated in file")
+              print(f"✅ New key generated & encrypted in file")
 
           # ── UTC timestamps ────────────────────────────────────────────
           now_utc = datetime.now(timezone.utc)
@@ -157,7 +177,6 @@ jobs:
 
           # ── new-embed: POST new message, DELETE old one ───────────────
           if mode == "new-embed" or message_id is None:
-              # 1. Send new message (wait=true returns the message object with its ID)
               response = requests.post(
                   f"{base_url}?wait=true",
                   json=embed_payload,
@@ -167,7 +186,6 @@ jobs:
               new_message_id = str(response.json()["id"])
               print(f"✅ New message sent — ID: {new_message_id}")
 
-              # 2. Delete old message if we had one
               if message_id:
                   del_response = requests.delete(
                       f"{base_url}/messages/{message_id}",
@@ -178,7 +196,6 @@ jobs:
                   else:
                       print(f"⚠️  Could not delete old message: {del_response.status_code}")
 
-              # 3. Save new message ID to file
               with open("message_id.txt", "w") as f:
                   f.write(new_message_id)
               print(f"💾 Saved new message ID: {new_message_id}")
