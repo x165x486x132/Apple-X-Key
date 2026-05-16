@@ -12,9 +12,10 @@ on:
         default: 'generate'
         type: choice
         options:
-          - generate    # New key + update embed
-          - refresh     # Refresh embed only (keep current key)
-          - new-embed   # Send a new message, delete the old one, save new ID
+          - generate        # New key + update embed
+          - refresh         # Refresh embed only (keep current key)
+          - new-embed       # Send a new message, delete the old one, save new ID
+          - encrypt-current # 🔒 ONLY encrypts the current key.txt (No Discord update)
 
 permissions:
   contents: write
@@ -62,46 +63,52 @@ jobs:
           print(f"▶️  Mode: {mode}")
 
           # ── MOT DE PASSE SECRET
-          SECRET_PASSWORD = "AppleX_Secret_2026!"
+          SECRET_PASSWORD = "FDGJ084MKLJGDL146515KGREFEZE654HRJ"
           CHARSET = string.ascii_uppercase + string.digits
 
           def encrypt_xor(text, key):
-              encrypted = bytearray()
-              for i in range(len(text)):
-                  char_code = ord(text[i])
-                  key_code = ord(key[i % len(key)])
-                  encrypted.append(char_code ^ key_code)
-              return encrypted
+              return bytes([ord(c) ^ ord(key[i % len(key)]) for i, c in enumerate(text)])
 
           def decrypt_xor(data_bytes, key):
-              decrypted = []
-              for i in range(len(data_bytes)):
-                  byte_val = data_bytes[i]
-                  key_code = ord(key[i % len(key)])
-                  decrypted.append(chr(byte_val ^ key_code))
-              return "".join(decrypted)
+              return "".join([chr(b ^ ord(key[i % len(key)])) for i, b in enumerate(data_bytes)])
 
+          # ── MODE : ENCRYPT CURRENT (Crypte la clé en clair actuelle)
+          if mode == "encrypt-current":
+              try:
+                  with open("key.txt", "r") as f:
+                      content = f.read().strip()
+                  
+                  if content.startswith("APPLEX"):
+                      xor_encrypted = encrypt_xor(content, SECRET_PASSWORD)
+                      obfuscated_key = base64.b64encode(xor_encrypted).decode('utf-8')
+                      with open("key.txt", "w") as f:
+                          f.write(obfuscated_key)
+                      print("✅ Fichier key.txt obfusqué avec succès ! (Discord ignoré)")
+                  else:
+                      print("⚠️ Le fichier ne commence pas par APPLEX. Déjà crypté ?")
+              except FileNotFoundError:
+                  print("❌ key.txt introuvable.")
+              
+              sys.exit(0) # On arrête le script ici, on ne touche pas à Discord
+
+          # ── AUTRES MODES : REFRESH OU GENERATE
           if mode == "refresh" or mode == "new-embed":
               try:
                   with open("key.txt", "r") as f:
                       obfuscated_key = f.read().strip()
                   
-                  # Sécurité : On vérifie si le décryptage donne bien "APPLEX..."
                   try:
                       xor_bytes = base64.b64decode(obfuscated_key)
                       test_key = decrypt_xor(xor_bytes, SECRET_PASSWORD)
-                      
                       if test_key.startswith("APPLEX"):
                           daily_key = test_key
                       else:
-                          # Si ça donne n'importe quoi, c'est que c'était l'ancienne méthode Base64
-                          daily_key = xor_bytes.decode('utf-8')
+                          daily_key = obfuscated_key
                   except Exception:
                       daily_key = obfuscated_key
                       
-                  print(f"🔁 Reusing existing key (decoded for Discord): {daily_key}")
               except FileNotFoundError:
-                  print("❌ key.txt not found — run 'generate' first.", file=sys.stderr)
+                  print("❌ key.txt not found.", file=sys.stderr)
                   sys.exit(1)
           else:
               random_part = ''.join(random.SystemRandom().choices(CHARSET, k=13))
@@ -114,71 +121,64 @@ jobs:
                   f.write(obfuscated_key)
               print(f"✅ New key generated & encrypted in file")
 
-          # ── UTC timestamps ────────────────────────────────────────────
+          # ── UTC timestamps & Discord ──────────────────────────────────
           now_utc = datetime.now(timezone.utc)
           time_str = now_utc.strftime("%H:%M UTC")
 
-          next_midnight = (now_utc + timedelta(days=1)).replace(
-              hour=0, minute=0, second=0, microsecond=0
-          )
+          next_midnight = (now_utc + timedelta(days=1)).replace(hour=0, minute=0, second=0, microsecond=0)
           expire_str = next_midnight.strftime("%B %d, %Y at 00:00 UTC")
           hours_left = int((next_midnight - now_utc).total_seconds() // 3600)
           mins_left  = int(((next_midnight - now_utc).total_seconds() % 3600) // 60)
           time_left  = f"{hours_left}h {mins_left:02d}m remaining"
 
-          # ── Parse webhook URL ─────────────────────────────────────────
           webhook_url = os.environ.get("WEBHOOK_URL")
           if not webhook_url:
-              print("❌ WEBHOOK_URL is missing", file=sys.stderr)
               sys.exit(1)
 
-          parts         = webhook_url.rstrip("/").split("/")
-          webhook_token = parts[-1]
-          webhook_id    = parts[-2]
+          parts = webhook_url.rstrip("/").split("/")
+          base_url = f"https://discord.com/api/webhooks/{parts[-2]}/{parts[-1]}"
 
-          base_url = f"https://discord.com/api/webhooks/{webhook_id}/{webhook_token}"
-
-          # ── Read current message ID from file ─────────────────────────
+          message_id = None
           try:
               with open("message_id.txt", "r") as f:
                   message_id = f.read().strip()
-              print(f"📌 Current message ID: {message_id}")
           except FileNotFoundError:
-              message_id = None
+              pass
 
-          # ── Build embed payload ───────────────────────────────────────
           embed_payload = {
               "username": "Apple X | KEY",
               "embeds": [{
-                  "author": {
-                      "name": "Apple X — Security System"
-                  },
+                  "author": {"name": "Apple X — Security System"},
                   "title": "🔑  Daily Access Key",
-                  "description": (
-                      f"-# {now_utc.strftime('%A, %B %d %Y')}\n"
-                      f"```fix\n{daily_key}\n```\n"
-                      f"-# ⚠️  Do not share this key — Come back daily to keep your access."
-                  ),
+                  "description": f"-# {now_utc.strftime('%A, %B %d %Y')}\n```fix\n{daily_key}\n```\n-# ⚠️  Do not share this key — Come back daily to keep your access.",
                   "color": 0x57F287,
                   "fields": [
-                      {
-                          "name": "📅  Expires on",
-                          "value": f"**{expire_str}**",
-                          "inline": True
-                      },
-                      {
-                          "name": "⏳  Time left",
-                          "value": f"**{time_left}**",
-                          "inline": True
-                      }
+                      {"name": "📅  Expires on", "value": f"**{expire_str}**", "inline": True},
+                      {"name": "⏳  Time left", "value": f"**{time_left}**", "inline": True}
                   ],
-                  "footer": {
-                      "text": f"{'Refreshed' if mode == 'refresh' else 'Generated'} at {time_str}  ·  Apple X"
-                  }
+                  "footer": {"text": f"{'Refreshed' if mode == 'refresh' else 'Generated'} at {time_str}  ·  Apple X"}
               }]
           }
 
-          # ── new-embed: POST new message, DELETE old one ───────────────
           if mode == "new-embed" or message_id is None:
-              response = requests.post(
-                  f"{base_url
+              resp = requests.post(f"{base_url}?wait=true", json=embed_payload, timeout=10)
+              resp.raise_for_status()
+              new_message_id = str(resp.json()["id"])
+              if message_id:
+                  requests.delete(f"{base_url}/messages/{message_id}", timeout=10)
+              with open("message_id.txt", "w") as f:
+                  f.write(new_message_id)
+          else:
+              requests.patch(f"{base_url}/messages/{message_id}", json=embed_payload, timeout=10)
+          EOF
+
+      - name: Commit & Push changes
+        if: ${{ steps.detect-mode.outputs.mode != 'refresh' }}
+        run: |
+          git config --global user.name  "Apple X Bot"
+          git config --global user.email "bot@applex.com"
+          git add key.txt
+          git add message_id.txt --ignore-unmatch
+          git diff --cached --quiet && echo "⚠️ No changes to commit" && exit 0
+          git commit -m "chore: secure daily key update"
+          git push
