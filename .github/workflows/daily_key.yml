@@ -48,7 +48,7 @@ jobs:
       - name: Generate Key & Edit Discord Embed
         env:
           WEBHOOK_URL: ${{ secrets.WEBHOOK_URL }}
-          SECRET_PASSWORD: ${{ secrets.SECRET_PASSWORD }} # <--- LE MOT DE PASSE EST CACHÉ ICI
+          SECRET_PASSWORD: ${{ secrets.SECRET_PASSWORD }}
           MODE: ${{ steps.detect-mode.outputs.mode }}
         run: |
           python3 << 'EOF'
