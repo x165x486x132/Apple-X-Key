@@ -160,7 +160,7 @@ jobs:
                   ),
                   "color": 0x57F287,
                   "image": {
-                      "url": "LIEN_DE_TON_IMAGE_ICI" # <--- N'OUBLIE PAS DE METTRE TON LIEN D'IMAGE ICI
+                      "url": "https://tr.rbxcdn.com/180DAY-35cc236165c857f9747112addef6db71/768/432/Image/Webp/noFilter" # <--- N'OUBLIE PAS DE METTRE TON LIEN D'IMAGE ICI
                   },
                   "fields": [
                       {"name": "📅  Expires on", "value": f"<t:{midnight_ts}:f>", "inline": True},
