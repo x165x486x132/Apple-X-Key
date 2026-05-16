@@ -48,6 +48,7 @@ jobs:
       - name: Generate Key & Edit Discord Embed
         env:
           WEBHOOK_URL: ${{ secrets.WEBHOOK_URL }}
+          SECRET_PASSWORD: ${{ secrets.SECRET_PASSWORD }} # <--- LE MOT DE PASSE EST CACHÉ ICI
           MODE: ${{ steps.detect-mode.outputs.mode }}
         run: |
           python3 << 'EOF'
@@ -62,8 +63,13 @@ jobs:
           mode = os.environ.get("MODE", "generate")
           print(f"▶️  Mode: {mode}")
 
-          # ── SECRET PASSWORD
-          SECRET_PASSWORD = "FDGJ084MKLJGDL146515KGREFEZE654HRJ"
+          # ── SECRET PASSWORD (Récupéré depuis les options invisibles de GitHub)
+          SECRET_PASSWORD = os.environ.get("SECRET_PASSWORD")
+          
+          if not SECRET_PASSWORD:
+              print("❌ ERREUR: Le SECRET_PASSWORD manque dans les variables GitHub !")
+              sys.exit(1)
+
           CHARSET = string.ascii_uppercase + string.digits
 
           def encrypt_xor(text, key):
@@ -83,15 +89,15 @@ jobs:
                       obfuscated_key = base64.b64encode(xor_encrypted).decode('utf-8')
                       with open("key.txt", "w") as f:
                           f.write(obfuscated_key)
-                      print("✅ Fichier key.txt obfusqué avec succès ! (Discord ignoré)")
+                      print("✅ File key.txt obfuscated successfully! (Discord ignored)")
                   else:
-                      print("⚠️ Le fichier ne commence pas par APPLEX. Déjà crypté ?")
+                      print("⚠️ The file does not start with APPLEX. Already encrypted?")
               except FileNotFoundError:
-                  print("❌ key.txt introuvable.")
+                  print("❌ key.txt not found.")
               
               sys.exit(0)
 
-          # ── AUTRES MODES : REFRESH OU GENERATE
+          # ── OTHER MODES : REFRESH OR GENERATE
           if mode == "refresh" or mode == "new-embed":
               try:
                   with open("key.txt", "r") as f:
@@ -121,18 +127,19 @@ jobs:
                   f.write(obfuscated_key)
               print(f"✅ New key generated & encrypted in file")
 
-          # ── TIMESTAMPS DISCORD DYNAMIQUES ─────────────────────────────
+          # ── DYNAMIC DISCORD TIMESTAMPS ────────────────────────────────
           now_utc = datetime.now(timezone.utc)
           time_str = now_utc.strftime("%H:%M UTC")
 
-          # Calcul du prochain minuit (UTC)
+          # Calculate next midnight (UTC)
           next_midnight = (now_utc + timedelta(days=1)).replace(hour=0, minute=0, second=0, microsecond=0)
           
-          # Convertir en timestamp UNIX (ex: 1778968800)
+          # Convert to UNIX timestamp
           midnight_ts = int(next_midnight.timestamp())
 
           webhook_url = os.environ.get("WEBHOOK_URL")
           if not webhook_url:
+              print("❌ WEBHOOK_URL secret is missing!")
               sys.exit(1)
 
           parts = webhook_url.rstrip("/").split("/")
@@ -145,29 +152,50 @@ jobs:
           except FileNotFoundError:
               pass
 
-          # ── CONSTRUCTION DU MESSAGE DISCORD ───────────────────────────
+          # ── GHOST PING SYSTEM (MENTION & DELETE) ──────────────────────
+          if mode == "generate" or mode == "new-embed":
+              try:
+                  print("👻 Sending ghost ping...")
+                  TARGET_ROLE_ID = "1343714555808776263" # <--- TON ID DE ROLE
+                  ping_payload = {"content": f"<@&{TARGET_ROLE_ID}>"} 
+                  ping_resp = requests.post(f"{base_url}?wait=true", json=ping_payload, timeout=10)
+                  
+                  if ping_resp.ok:
+                      ping_id = str(ping_resp.json()["id"])
+                      requests.delete(f"{base_url}/messages/{ping_id}", timeout=10)
+                      print("✅ Ghost ping sent and deleted successfully.")
+                  else:
+                      print(f"⚠️ Ghost ping failed: {ping_resp.text}")
+              except Exception as e:
+                  print(f"⚠️ Error during ghost ping: {e}")
+
+          # ── DISCORD MESSAGE CONSTRUCTION ──────────────────────────────
+          IMAGE_URL = "https://tr.rbxcdn.com/180DAY-35cc236165c857f9747112addef6db71/768/432/Image/Webp/noFilter"
+
+          embed_content = {
+              "author": {"name": "Apple X — Security System"},
+              "title": "🔑 Daily Access Key — Highway Legends",
+              "description": (
+                  f"-# {now_utc.strftime('%A, %B %d %Y')}\n"
+                  f"```fix\n{daily_key}\n```\n"
+                  f"**📜 Script:**\n"
+                  f"```lua\nloadstring(game:HttpGet(\"https://raw.githubusercontent.com/Tamachiru/AppleX/refs/heads/main/Game4\"))()\n```\n"
+                  f"-# ⚠️ Do not share this key — Come back daily to keep your access."
+              ),
+              "color": 0x57F287,
+              "fields": [
+                  {"name": "📅  Expires on", "value": f"<t:{midnight_ts}:f>", "inline": True},
+                  {"name": "⏳  Time left", "value": f"<t:{midnight_ts}:R>", "inline": True}
+              ],
+              "footer": {"text": f"{'Refreshed' if mode == 'refresh' else 'Generated'} at {time_str}  ·  Apple X"}
+          }
+
+          if IMAGE_URL.startswith("http"):
+              embed_content["image"] = {"url": IMAGE_URL}
+
           embed_payload = {
               "username": "Apple X | KEY",
-              "embeds": [{
-                  "author": {"name": "Apple X — Security System"},
-                  "title": "🔑 Daily Access Key — Highway Legends",
-                  "description": (
-                      f"-# {now_utc.strftime('%A, %B %d %Y')}\n"
-                      f"```fix\n{daily_key}\n```\n"
-                      f"**📜 Script:**\n"
-                      f"```lua\nloadstring(game:HttpGet(\"https://raw.githubusercontent.com/Tamachiru/AppleX/refs/heads/main/Game4\"))()\n```\n"
-                      f"-# ⚠️ Do not share this key — Come back daily to keep your access."
-                  ),
-                  "color": 0x57F287,
-                  "image": {
-                      "url": "https://tr.rbxcdn.com/180DAY-35cc236165c857f9747112addef6db71/768/432/Image/Webp/noFilter" # <--- N'OUBLIE PAS DE METTRE TON LIEN D'IMAGE ICI
-                  },
-                  "fields": [
-                      {"name": "📅  Expires on", "value": f"<t:{midnight_ts}:f>", "inline": True},
-                      {"name": "⏳  Time left", "value": f"<t:{midnight_ts}:R>", "inline": True}
-                  ],
-                  "footer": {"text": f"{'Refreshed' if mode == 'refresh' else 'Generated'} at {time_str}  ·  Apple X"}
-              }],
+              "embeds": [embed_content],
               "components": [{
                   "type": 1,
                   "components": [
@@ -183,6 +211,8 @@ jobs:
 
           if mode == "new-embed" or message_id is None:
               resp = requests.post(f"{base_url}?wait=true", json=embed_payload, timeout=10)
+              if not resp.ok:
+                  print(f"❌ Discord Error: {resp.text}")
               resp.raise_for_status()
               new_message_id = str(resp.json()["id"])
               if message_id:
@@ -190,7 +220,10 @@ jobs:
               with open("message_id.txt", "w") as f:
                   f.write(new_message_id)
           else:
-              requests.patch(f"{base_url}/messages/{message_id}", json=embed_payload, timeout=10)
+              resp = requests.patch(f"{base_url}/messages/{message_id}", json=embed_payload, timeout=10)
+              if not resp.ok:
+                  print(f"❌ Discord Error: {resp.text}")
+              resp.raise_for_status()
           EOF
 
       - name: Commit & Push changes
