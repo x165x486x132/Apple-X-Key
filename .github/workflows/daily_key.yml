@@ -2,7 +2,6 @@ name: 🍏 Apple X — Daily Key Generator
 
 on:
   schedule:
-    # Génère une nouvelle clé uniquement à minuit (UTC)
     - cron: '0 0 * * *'
   workflow_dispatch:
     inputs:
@@ -56,11 +55,11 @@ jobs:
           mode = os.environ.get("MODE", "generate")
           print(f"▶️  Mode: {mode}")
 
-          # ── SECRET PASSWORD (Récupéré depuis les options invisibles de GitHub)
+          # ── SECRET PASSWORD
           SECRET_PASSWORD = os.environ.get("SECRET_PASSWORD")
           
           if not SECRET_PASSWORD:
-              print("❌ ERREUR: Le SECRET_PASSWORD manque dans les variables GitHub !")
+              print("❌ ERROR : SECRET PASSWORD")
               sys.exit(1)
 
           CHARSET = string.ascii_uppercase + string.digits
@@ -149,7 +148,7 @@ jobs:
           if mode == "generate":
               try:
                   print("👻 Sending ghost ping...")
-                  TARGET_ROLE_ID = "1498644211858411663" # <--- TON ID DE ROLE
+                  TARGET_ROLE_ID = "1498644211858411663"
                   ping_payload = {"content": f"<@&{TARGET_ROLE_ID}>"} 
                   ping_resp = requests.post(f"{base_url}?wait=true", json=ping_payload, timeout=10)
                   
@@ -162,7 +161,7 @@ jobs:
               except Exception as e:
                   print(f"⚠️ Error during ghost ping: {e}")
 
-          # ── DISCORD MESSAGE CONSTRUCTION ──────────────────────────────
+          # ── DISCORD MESSAGE ──────────────────────────────
           IMAGE_URL = "https://tr.rbxcdn.com/180DAY-35cc236165c857f9747112addef6db71/768/432/Image/Webp/noFilter"
 
           embed_content = {
