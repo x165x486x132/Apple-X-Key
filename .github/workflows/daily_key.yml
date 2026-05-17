@@ -2,8 +2,8 @@ name: 🍏 Apple X — Daily Key Generator
 
 on:
   schedule:
+    # Génère une nouvelle clé uniquement à minuit (UTC)
     - cron: '0 0 * * *'
-    - cron: '15,45 * * * *'
   workflow_dispatch:
     inputs:
       mode:
@@ -13,7 +13,6 @@ on:
         type: choice
         options:
           - generate        # New key + update embed
-          - refresh         # Refresh embed only (keep current key)
           - new-embed       # Send a new message, delete the old one, save new ID
           - encrypt-current # 🔒 ONLY encrypts the current key.txt (No Discord update)
 
@@ -34,13 +33,7 @@ jobs:
         id: detect-mode
         run: |
           if [ "${{ github.event_name }}" = "schedule" ]; then
-            HOUR=$(date -u +"%H")
-            MINUTE=$(date -u +"%M")
-            if [ "$HOUR" = "00" ] && [ "$MINUTE" = "00" ]; then
-              echo "mode=generate" >> $GITHUB_OUTPUT
-            else
-              echo "mode=refresh" >> $GITHUB_OUTPUT
-            fi
+            echo "mode=generate" >> $GITHUB_OUTPUT
           else
             echo "mode=${{ github.event.inputs.mode || 'generate' }}" >> $GITHUB_OUTPUT
           fi
@@ -97,8 +90,8 @@ jobs:
               
               sys.exit(0)
 
-          # ── OTHER MODES : REFRESH OR GENERATE
-          if mode == "refresh" or mode == "new-embed":
+          # ── OTHER MODES : NEW-EMBED OR GENERATE
+          if mode == "new-embed":
               try:
                   with open("key.txt", "r") as f:
                       obfuscated_key = f.read().strip()
@@ -111,8 +104,8 @@ jobs:
                       else:
                           daily_key = obfuscated_key
                   except Exception:
-                      daily_key = obfuscated_key
-                      
+                          daily_key = obfuscated_key
+                          
               except FileNotFoundError:
                   print("❌ key.txt not found.", file=sys.stderr)
                   sys.exit(1)
@@ -187,7 +180,7 @@ jobs:
                   {"name": "📅  Expires on", "value": f"<t:{midnight_ts}:f>", "inline": True},
                   {"name": "⏳  Time left", "value": f"<t:{midnight_ts}:R>", "inline": True}
               ],
-              "footer": {"text": f"{'Refreshed' if mode == 'refresh' else 'Generated'} at {time_str}  ·  Apple X"}
+              "footer": {"text": f"Generated at {time_str}  ·  Apple X"}
           }
 
           if IMAGE_URL.startswith("http"):
@@ -227,7 +220,6 @@ jobs:
           EOF
 
       - name: Commit & Push changes
-        if: ${{ steps.detect-mode.outputs.mode != 'refresh' }}
         run: |
           git config --global user.name "Apple X Bot"
           git config --global user.email "bot@applex.com"
