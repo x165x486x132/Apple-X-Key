@@ -139,15 +139,31 @@ jobs:
               "title": "🔑 Daily Access Key — Highway Legends",
               "description": (
                   f"-# {now.strftime('%A, %B %d %Y')}\n"
-                  f"```fix\n{daily_key}\n```\n"
-                  f"**📜 Script:**\n"
-                  f"```lua\nloadstring(game:HttpGet(\"https://raw.githubusercontent.com/Tamachiru/AppleX/refs/heads/main/Game4\"))()\n```\n"
+                  f"-# 💡 **Tip:** Press and hold a code block below to copy it.\n"
                   f"-# ⚠️ Do not share this key — Come back daily to keep your access."
               ),
               "color": 0x57F287,
               "fields": [
-                  {"name": "📅  Expires on", "value": f"<t:{mid_ts}:f>", "inline": True},
-                  {"name": "⏳  Time left", "value": f"<t:{mid_ts}:R>", "inline": True}
+                  {
+                      "name": "🔑 Key",
+                      "value": f"```fix\n{daily_key}\n```",
+                      "inline": False
+                  },
+                  {
+                      "name": "📜 Script",
+                      "value": f"```lua\nloadstring(game:HttpGet(\"https://raw.githubusercontent.com/Tamachiru/AppleX/refs/heads/main/Game4\"))()\n```",
+                      "inline": False
+                  },
+                  {
+                      "name": "📅 Expires on", 
+                      "value": f"<t:{mid_ts}:f>", 
+                      "inline": True
+                  },
+                  {
+                      "name": "⏳ Time left", 
+                      "value": f"<t:{mid_ts}:R>", 
+                      "inline": True
+                  }
               ],
               "footer": {"text": f"Generated at {now.strftime('%H:%M UTC')}  ·  Apple X"}
           }
@@ -159,12 +175,20 @@ jobs:
               "embeds": [embed],
               "components": [{
                   "type": 1,
-                  "components": [{
-                      "type": 2,
-                      "label": "🎮 Play Game",
-                      "style": 5,
-                      "url": "https://www.roblox.com/fr/games/15288629078/Highway-Legends"
-                  }]
+                  "components": [
+                      {
+                          "type": 2,
+                          "label": "🎮 Play Game",
+                          "style": 5,
+                          "url": "https://www.roblox.com/fr/games/15288629078/Highway-Legends"
+                      },
+                      {
+                          "type": 2,
+                          "label": "📜 Raw Script",
+                          "style": 5,
+                          "url": "https://raw.githubusercontent.com/Tamachiru/AppleX/refs/heads/main/Game4"
+                      }
+                  ]
               }]
           }
 
