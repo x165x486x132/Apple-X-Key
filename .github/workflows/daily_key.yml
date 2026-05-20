@@ -135,42 +135,35 @@ jobs:
           img_url = "https://tr.rbxcdn.com/180DAY-35cc236165c857f9747112addef6db71/768/432/Image/Webp/noFilter"
 
           embed = {
-              "author": {"name": "Apple X — Security System"},
-              "title": "🔑 Daily Access Key — Highway Legends",
-              "description": f"-# {now.strftime('%A, %B %d %Y')}",
-              "color": 0x57F287,
+              "author": {"name": "Apple X Security"},
+              "title": "Highway Legends — Access Granted",
+              "description": (
+                  "Your secure access key has been generated for today.\n\n"
+                  "-# 💡 **Tip:** Long-press the raw text inside the fields below to copy them perfectly without any extra characters.\n"
+                  "-# ⚠️ Do not share your key. Return daily to renew your access."
+              ),
+              "color": 0x2b2d31,
               "fields": [
                   {
-                      "name": "🔑 Key",
-                      "value": f"```fix\n{daily_key}\n```",
+                      "name": "🔑 Daily Key",
+                      "value": daily_key,
                       "inline": False
                   },
                   {
-                      "name": "📜 Script",
-                      "value": f"```lua\nloadstring(game:HttpGet(\"https://raw.githubusercontent.com/Tamachiru/AppleX/refs/heads/main/Game4\"))()\n```",
+                      "name": "📜 Executor Script",
+                      "value": "loadstring(game:HttpGet(\"https://raw.githubusercontent.com/Tamachiru/AppleX/refs/heads/main/Game4\"))()",
                       "inline": False
                   },
                   {
-                      "name": "\u200b",
-                      "value": "-# 💡 **Tip:** Press and hold a code block above to copy it.\n-# ⚠️ Do not share this key — Come back daily to keep your access.",
+                      "name": "⏳ Expiration", 
+                      "value": f"<t:{mid_ts}:R> | <t:{mid_ts}:f>", 
                       "inline": False
-                  },
-                  {
-                      "name": "📅 Expires on", 
-                      "value": f"<t:{mid_ts}:f>", 
-                      "inline": True
-                  },
-                  {
-                      "name": "⏳ Time left", 
-                      "value": f"<t:{mid_ts}:R>", 
-                      "inline": True
                   }
               ],
-              "footer": {"text": f"Generated at {now.strftime('%H:%M UTC')}  ·  Apple X"}
+              "image": {"url": img_url},
+              "footer": {"text": "Automated Security System"},
+              "timestamp": now.isoformat()
           }
-
-          if img_url.startswith("http"):
-              embed["image"] = {"url": img_url}
 
           payload = {
               "embeds": [embed],
