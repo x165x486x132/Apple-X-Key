@@ -137,11 +137,7 @@ jobs:
           embed = {
               "author": {"name": "Apple X — Security System"},
               "title": "🔑 Daily Access Key — Highway Legends",
-              "description": (
-                  f"-# {now.strftime('%A, %B %d %Y')}\n"
-                  f"-# 💡 **Tip:** Press and hold a code block below to copy it.\n"
-                  f"-# ⚠️ Do not share this key — Come back daily to keep your access."
-              ),
+              "description": f"-# {now.strftime('%A, %B %d %Y')}",
               "color": 0x57F287,
               "fields": [
                   {
@@ -152,6 +148,11 @@ jobs:
                   {
                       "name": "📜 Script",
                       "value": f"```lua\nloadstring(game:HttpGet(\"https://raw.githubusercontent.com/Tamachiru/AppleX/refs/heads/main/Game4\"))()\n```",
+                      "inline": False
+                  },
+                  {
+                      "name": "\u200b",
+                      "value": "-# 💡 **Tip:** Press and hold a code block above to copy it.\n-# ⚠️ Do not share this key — Come back daily to keep your access.",
                       "inline": False
                   },
                   {
@@ -181,12 +182,6 @@ jobs:
                           "label": "🎮 Play Game",
                           "style": 5,
                           "url": "https://www.roblox.com/fr/games/15288629078/Highway-Legends"
-                      },
-                      {
-                          "type": 2,
-                          "label": "📜 Raw Script",
-                          "style": 5,
-                          "url": "https://raw.githubusercontent.com/Tamachiru/AppleX/refs/heads/main/Game4"
                       }
                   ]
               }]
