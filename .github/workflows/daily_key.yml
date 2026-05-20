@@ -45,7 +45,7 @@ jobs:
       - name: Run key generation script
         env:
           BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
-          CHANNEL_ID: ${{ secrets.CHANNEL_ID }}
+          KEY_CHANNEL_ID: ${{ secrets.KEY_CHANNEL_ID }}
           SECRET_PASSWORD: ${{ secrets.SECRET_PASSWORD }}
           RUN_MODE: ${{ steps.parse-mode.outputs.mode }}
         run: |
@@ -56,12 +56,12 @@ jobs:
           mode = os.environ.get("RUN_MODE", "generate")
           secret = os.environ.get("SECRET_PASSWORD")
           bot_token = os.environ.get("BOT_TOKEN")
-          channel_id = os.environ.get("CHANNEL_ID")
+          channel_id = os.environ.get("KEY_CHANNEL_ID")
 
           if not secret:
               sys.exit("Error: Missing secret password in environment.")
           if not bot_token or not channel_id:
-              sys.exit("Error: BOT_TOKEN or CHANNEL_ID is missing. Check your GitHub Secrets.")
+              sys.exit("Error: BOT_TOKEN or KEY_CHANNEL_ID is missing. Check your GitHub Secrets.")
 
           def xor_cipher(text, key):
               return bytes([ord(c) ^ ord(key[i % len(key)]) for i, c in enumerate(text)])
@@ -69,7 +69,6 @@ jobs:
           def xor_decipher(data, key):
               return "".join([chr(b ^ ord(key[i % len(key)])) for i, b in enumerate(data)])
 
-          # Handle local encryption only
           if mode == "encrypt-current":
               if not os.path.exists("key.txt"):
                   sys.exit("Error: key.txt not found.")
@@ -85,7 +84,6 @@ jobs:
 
           daily_key = ""
           
-          # Read existing or generate new key
           if mode == "new-embed":
               try:
                   with open("key.txt", "r") as f:
@@ -106,7 +104,6 @@ jobs:
               with open("key.txt", "w") as f:
                   f.write(encoded)
 
-          # Configuration de l'API Discord Bot
           headers = {
               "Authorization": f"Bot {bot_token}",
               "Content-Type": "application/json"
@@ -118,7 +115,6 @@ jobs:
               with open("message_id.txt", "r") as f:
                   msg_id = f.read().strip()
 
-          # Ghost ping logic avec le Bot
           if mode == "generate":
               try:
                   ping_res = requests.post(
@@ -132,7 +128,6 @@ jobs:
               except Exception:
                   pass
 
-          # Timestamps
           now = datetime.now(timezone.utc)
           next_mid = (now + timedelta(days=1)).replace(hour=0, minute=0, second=0, microsecond=0)
           mid_ts = int(next_mid.timestamp())
@@ -173,30 +168,25 @@ jobs:
               }]
           }
 
-          # Update or send new embed via Bot
           message_sent = False
 
           if mode != "new-embed" and msg_id:
-              # 1. On essaie d'éditer l'ancien message
               r = requests.patch(f"{base_url}/{msg_id}", json=payload, headers=headers, timeout=10)
               if r.ok:
                   message_sent = True
               else:
-                  print(f"Impossible de modifier le message. (Il appartient au Webhook ou n'existe plus).")
+                  print("Failed to edit the message. It might belong to a webhook or no longer exist.")
 
           if not message_sent:
-              # 2. Si on n'a pas pu l'éditer, on envoie un nouveau message
               r = requests.post(base_url, json=payload, headers=headers, timeout=10)
               r.raise_for_status()
               new_msg_id = str(r.json()["id"])
               
-              # 3. On tente de supprimer l'ancien message
               if msg_id:
                   del_r = requests.delete(f"{base_url}/{msg_id}", headers=headers, timeout=10)
                   if not del_r.ok:
-                      print("Impossible de supprimer l'ancien message (Vérifie que le bot a la permission 'Gérer les messages').")
+                      print("Failed to delete the old message. Make sure the bot has the 'Manage Messages' permission.")
                       
-              # 4. On sauvegarde le nouvel ID du message du Bot
               with open("message_id.txt", "w") as f:
                   f.write(new_msg_id)
           EOF
