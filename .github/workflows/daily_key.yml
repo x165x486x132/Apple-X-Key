@@ -147,7 +147,7 @@ jobs:
                   },
                   {
                       "name": "📜 Script",
-                      "value": f"```lua\nloadstring(game:HttpGet(\"https://raw.githubusercontent.com/Tamachiru/AppleX/refs/heads/main/Game4\"))()\n```",
+                      "value": f"```lua\nloadstring(game:HttpGet(\"https://raw.githubusercontent.com/x165x486x132/AppleX/refs/heads/main/Game4\"))()\n```",
                       "inline": False
                   },
                   {
