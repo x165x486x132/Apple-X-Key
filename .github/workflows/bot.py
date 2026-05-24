@@ -10,7 +10,7 @@ import asyncio
 
 # --- CONFIGURATION ---
 DISCORD_TOKEN = os.getenv("DISCORD_TOKEN")
-GITHUB_TOKEN = os.getenv("GITHUB_TOKEN") # Ton Personal Access Token GitHub
+GH_API_TOKEN = os.getenv("GH_API_TOKEN") # 👈 Changé ici !
 REPO_NAME = "x165x486x132/Apple-X-Key"    # Ton repository
 FILE_PATH = "hwid_db.json"               # Le fichier qui sert de base de données
 ROLE_PREMIUM_ID = 1498644209840951468    # ID du rôle requis
@@ -18,7 +18,7 @@ ROLE_PREMIUM_ID = 1498644209840951468    # ID du rôle requis
 # --- GESTION GITHUB API ---
 def get_github_db():
     url = f"https://api.github.com/repos/{REPO_NAME}/contents/{FILE_PATH}"
-    headers = {"Authorization": f"token {GITHUB_TOKEN}"}
+    headers = {"Authorization": f"token {GH_API_TOKEN}"}
     r = requests.get(url, headers=headers)
     if r.status_code == 200:
         data = r.json()
@@ -28,7 +28,7 @@ def get_github_db():
 
 def update_github_db(json_data, sha):
     url = f"https://api.github.com/repos/{REPO_NAME}/contents/{FILE_PATH}"
-    headers = {"Authorization": f"token {GITHUB_TOKEN}"}
+    headers = {"Authorization": f"token {GH_API_TOKEN}"}
     content_b64 = base64.b64encode(json.dumps(json_data, indent=4).encode('utf-8')).decode('utf-8')
     payload = {"message": "🤖 Update HWID Database", "content": content_b64}
     if sha:
@@ -85,6 +85,6 @@ async def generate_key(interaction: discord.Interaction, hwid: str):
         script_to_copy = f'```lua\n_G.AppleKey = "{user_key}"\nloadstring(game:HttpGet("https://raw.githubusercontent.com/Tamachiru/AppleX/refs/heads/main/Game4"))()\n```'
         await interaction.followup.send(f"✅ **Base de données GitHub mise à jour.**\n\nVoici ton script d'accès personnel. Ton PC est désormais enregistré.\n{script_to_copy}\n\n*Note : Laisse passer 1 à 2 minutes pour que GitHub mette à jour le fichier avant de l'injecter dans Roblox.*")
     else:
-        await interaction.followup.send("❌ Erreur lors de la sauvegarde sur GitHub. Vérifie le GITHUB_TOKEN.")
+        await interaction.followup.send("❌ Erreur lors de la sauvegarde sur GitHub. Vérifie que le secret GH_API_TOKEN est bien configuré et a les permissions 'Contents: Read & Write'.")
 
 bot.run(DISCORD_TOKEN)
