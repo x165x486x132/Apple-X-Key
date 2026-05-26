@@ -33,5 +33,10 @@
         "hwid": "CDD19BC3-E384-4620-9D30-CF026D1E2287",
         "username": "kooperbob",
         "role": "Booster"
+    },
+    "1122479417281740892": {
+        "hwid": "SETCLIPBOARD(GAME:GETSERVICE('RBXANALYTICSSERVICE'):GETCLIENTID())",
+        "username": "desiredslow",
+        "role": "Premium"
     }
 }
