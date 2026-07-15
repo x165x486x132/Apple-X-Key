@@ -53,10 +53,5 @@
         "hwid": "SETCLIPBOARD(GAME:GETSERVICE('RBXANALYTICSSERVICE'):GETCLIENTID())",
         "username": "sprngs",
         "role": "Premium"
-    },
-    "1020757585260986379": {
-        "hwid": "47489359-E00B-418D-B277-841EA5DCA16B",
-        "username": "3f0xx",
-        "role": "Booster"
     }
 }
